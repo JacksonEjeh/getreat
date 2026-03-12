@@ -12,7 +12,7 @@ const transporter = nodemailer.createTransport({
 const sendEmail = async (email, subject, message) => {
     try {
         const mailOptions = {
-            from: `"Getreat" <${config.email}>`,
+            from: `"Getreat Team" <${config.email}>`,
             to: email,
             subject,
             html: `<p style="font-size: 16px; color: #333;">${message}</p>`,
