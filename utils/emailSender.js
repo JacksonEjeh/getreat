@@ -3,10 +3,14 @@ import { config } from "../configs/config.js";
 
 const transporter = nodemailer.createTransport({
     service: "Gmail",
+    host: "smtp.gmail.com",
+    port: 465,
+    secure: true,
     auth: {
         user: config.email,
         pass: config.email_password,
     },
+    family: 4, // <-- FORCE IPv4 for Render
 });
 
 const sendEmail = async (email, subject, message) => {
@@ -19,11 +23,11 @@ const sendEmail = async (email, subject, message) => {
         };
         const info = await transporter.sendMail(mailOptions);
 
-        return{
+        return {
             success: true,
             message: `Email sent successfully to ${email}`,
-            messageId: info.messageId
-        }
+            messageId: info.messageId,
+        };
     } catch (error) {
         console.log("Error sending email:", error.message);
         return {

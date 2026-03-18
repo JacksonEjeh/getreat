@@ -206,6 +206,7 @@ const signUp = async (req, res, next) => {
             `Your OTP is: ${otp}. It expires in 10 minutes.`
         );
         if (emailSent.success === false) {
+            console.log( emailSent)
             throw new CustomError(400, "Failed to send OTP, Please try again later", "ValidationError")
         }
 
@@ -260,6 +261,7 @@ const verifyOTP = async (req, res, next) => {
         const refreshToken = generateRefreshToken(user._id);
 
         user.refreshToken = refreshToken;
+        user.onboarding_step = "verified";
         await user.save();
 
         res.cookie("refreshToken", refreshToken, {
