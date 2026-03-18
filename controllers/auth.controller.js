@@ -5,7 +5,7 @@ import CustomError from "../middleware/errorHandler.js";
 import jwt from "jsonwebtoken";
 import { config } from "../configs/config.js";
 import { generateAccessToken, generateRefreshToken } from "../utils/tokenHelper.js";
-import { verifyGoogleToken } from "../utils/googleverify.js";
+import { verifyGoogleToken } from "../utils/googleVerify.js";
 
 const generateOTP = ()=> ({
     otp: Math.floor(100000 + Math.random() * 900000).toString(),
