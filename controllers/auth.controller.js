@@ -160,9 +160,9 @@ const signUp = async (req, res, next) => {
     session.startTransaction();
 
     try {
-        const { full_name, email, phone, gender, dob, country_of_residence, password} = req.body;
+        const { full_name, email, phone, gender, dob, state_of_residence, country_of_residence, password} = req.body;
 
-        if(!full_name || !email || !phone || !gender || !dob || !country_of_residence || !password) {
+        if(!full_name || !email || !phone || !gender || !dob || !state_of_residence || !country_of_residence || !password) {
             throw new CustomError(400, "All fields are required", "ValidationError")
         }
         if(!/^\S+@\S+\.\S+$/.test(email)) {
@@ -188,6 +188,7 @@ const signUp = async (req, res, next) => {
             phone,
             gender,
             dob,
+            state_of_residence,
             country_of_residence,
             password: passwordHash,
             otp: hashedOTP,
