@@ -32,8 +32,7 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-
-app.options("*", cors());
+app.options("*", cors(corsOptions)); 
 
 //Middleware
 app.use(helmet());
@@ -83,8 +82,8 @@ app.use((err, req, res, next) => {
   });
 });
 
+swaggerDocs(app);
+
 app.listen(port, () => {
     console.log(`Server is running on http://localhost:${port}`)
 })
-
-swaggerDocs(app);
