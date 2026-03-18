@@ -5,6 +5,7 @@ import CustomError from "../middleware/errorHandler.js";
 import jwt from "jsonwebtoken";
 import { config } from "../configs/config.js";
 import { generateAccessToken, generateRefreshToken } from "../utils/tokenHelper.js";
+import { verifyGoogleToken } from "../utils/googleverify.js";
 
 const generateOTP = ()=> ({
     otp: Math.floor(100000 + Math.random() * 900000).toString(),
@@ -18,6 +19,139 @@ const generateAndSendOTP = async(user)=>{
     await user.save();
 
     await sendEmail(user.email, "Your OTP Code", `Your new OTP is ${otp}. It expires in 10 minutes`);
+};
+
+// google login or register
+export const googleAuth = async (req, res, next) => {
+    try {
+
+        const { token } = req.body;
+
+        if (!token) {
+            throw new CustomError(400, "Google token required", "ValidationError");
+        }
+
+        const payload = await verifyGoogleToken(token);
+
+        const {
+            email,
+            name,
+            picture,
+            sub,
+            email_verified
+        } = payload;
+
+        if (!email_verified) {
+            throw new CustomError(400, "Google email not verified", "ValidationError");
+        }
+
+        let user = await User.findOne({ email }).select("+refreshToken +password");
+
+        /*
+        SCENARIO 1
+        Existing user with email/password
+        */
+
+        if (user && !user.googleId) {
+
+            user.googleId = sub;
+            user.avatar = picture;
+
+            if (!user.auth_providers.includes("google")) {
+                user.auth_providers.push("google");
+            }
+
+            user.email_verified = true;
+
+            await user.save();
+
+        }
+
+        /*
+        SCENARIO 2
+        Existing Google user
+        */
+
+        if (user && user.googleId) {
+            // nothing to update
+        }
+
+        /*
+        SCENARIO 3
+        New user
+        */
+
+        if (!user) {
+
+            user = await User.create({
+                full_name: name,
+                email,
+                googleId: sub,
+                avatar: picture,
+                auth_providers: ["google"],
+                email_verified: true,
+                onboarding_step: "verified"
+            });
+
+        }
+
+        const accessToken = generateAccessToken(user._id);
+        const refreshToken = generateRefreshToken(user._id);
+
+        user.refreshToken = refreshToken;
+        await user.save();
+
+        res.cookie("refreshToken", refreshToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
+            maxAge: 7 * 24 * 60 * 60 * 1000,
+        });
+
+        res.status(200).json({
+            success: true,
+            accessToken,
+            user: {
+                email: user.email,
+                role: user.role
+            }
+        });
+
+    } catch (error) {
+        next(error);
+    }
+};
+// Allow Google Users To Add Password Later
+export const setPassword = async (req, res, next) => {
+    try {
+
+        const userId = req.user._id;
+        const { password } = req.body;
+
+        const user = await User.findById(userId).select("+password");
+
+        if (user.password) {
+            throw new CustomError(400, "Password already set");
+        }
+
+        const passwordHash = await bcrypt.hash(password, 10);
+
+        user.password = passwordHash;
+
+        if (!user.auth_providers.includes("local")) {
+            user.auth_providers.push("local");
+        }
+
+        await user.save();
+
+        res.status(200).json({
+            success: true,
+            message: "Password added successfully"
+        });
+
+    } catch (error) {
+        next(error);
+    }
 };
 
 //user registration and send otp
@@ -183,6 +317,14 @@ const signIn = async (req, res, next) => {
         
         if(!user.email_verified) throw new CustomError(403, "Account not verified", "ValidationError");
         
+        if (!user.password) {
+            throw new CustomError(
+                400,
+                "This account uses Google login. Please sign in with Google.",
+                "ValidationError"
+            );
+        }
+
         if (!email.match(/^\S+@\S+\.\S+$/)) {
             throw new CustomError(400, "Invalid email format", "ValidationError");
         }

@@ -15,7 +15,8 @@ const port = config.port || 5000;
 connectDataBase();
 
 const allowedOrigins = [
-  'http://localhost:3000'
+  'http://localhost:3000',
+  'http://localhost:5173',
 ];
 
 //CORS middleware at the top

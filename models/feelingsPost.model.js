@@ -23,6 +23,19 @@ const feelingsPostSchema = new mongoose.Schema({
             },
         },
     ],
+    visible_to: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User", // providers
+      },
+    ],
+
+    // optional: visibility type
+    visibility_type: {
+      type: String,
+      enum: ["private", "selected_providers", "all_providers"],
+      default: "private",
+    },
     comments: [
         {
             user: { 

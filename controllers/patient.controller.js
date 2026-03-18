@@ -6,16 +6,14 @@ import Patient from "../models/patient.model.js";
 import FeelingsPost from "../models/feelingsPost.model.js";
 import NutritionProfile from "../models/nutrition.model.js";
 import MaternalHealthProfile from "../models/maternalHealth.model.js";
+import Subscription from "../models/providerSubscription.model.js";
 
-/**
- * Create or Update Patient Profile
- * (Upsert – one patient per user)
- */
+// Create or Update Patient Profile
 export const createPatientProfile = async (req, res, next) => {
     try {
         const userId = req.user._id;
 
-        /* -------------------- PREVENT DUPLICATES -------------------- */
+        //PREVENT DUPLICATES
         const existingProfile = await Patient.findOne({ user: userId });
         if (existingProfile) {
             throw new CustomError(
@@ -26,79 +24,192 @@ export const createPatientProfile = async (req, res, next) => {
 
         const {
             service,
+            // pregnancy
             mode_of_pregnancy,
             last_menstrual_period,
+            expected_delivery_date,
+            gestational_weeks,
             has_health_condition,
-            health_condition_details,
-            baby_height,
-            blood_pressure,
-            sugar_level,
-            rhesus_factor,
-            fibroid_or_ovarian_cyst,
+            medical_conditions,
+            on_medication,
+            medication_details,
+            mode_of_delivery,
+            
+            // newborn
+            baby_full_name,
+            date_of_birth,
+            baby_gender,
+            baby_weight,
+            baby_length,
+            baby_head_circumference,
+            baby_photo,
+
+            // common
             profile_photo,
         } = req.body;
 
-        /* -------------------- REQUIRED FIELD CHECKS -------------------- */
+        //BASIC VALIDATION
         if (!service) throw new CustomError(400, "Service is required");
+
+        // PREGNANCY CARE VALIDATION 
+        if (service === "pregnancy care") {
         if (!mode_of_pregnancy)
-        throw new CustomError(400, "Mode of pregnancy is required");
+            throw new CustomError(400, "Mode of pregnancy is required");
+
         if (!last_menstrual_period)
-        throw new CustomError(400, "Last menstrual period is required");
+            throw new CustomError(400, "Last menstrual period is required");
+
+        if (!expected_delivery_date)
+            throw new CustomError(400, "Expected delivery date is required");
+
+        if (!gestational_weeks)
+            throw new CustomError(400, "Gestational weeks is required");
+
         if (has_health_condition === undefined)
-        throw new CustomError(400, "Health condition status is required");
-        if (has_health_condition && !health_condition_details)
-        throw new CustomError(
-            400,
-            "Please provide health condition details"
-        );
-        if (!rhesus_factor)
-        throw new CustomError(400, "Rhesus factor is required");
-        if (fibroid_or_ovarian_cyst === undefined)
-        throw new CustomError(
-            400,
-            "Fibroid or ovarian cyst status is required"
-        );
+            throw new CustomError(400, "Health condition status is required");
 
-        /* -------------------- NEWBORN CARE VALIDATION -------------------- */
+        if (has_health_condition && (!medical_conditions || medical_conditions.length === 0)) {
+            throw new CustomError(400, "Medical conditions are required");
+        }
+
+        if (on_medication === undefined)
+            throw new CustomError(400, "Medication status is required");
+
+        if (on_medication && !medication_details) {
+            throw new CustomError(400, "Medication details are required");
+        }
+
+        if (!mode_of_delivery)
+            throw new CustomError(400, "Mode of delivery is required");
+        }
+
+        // NEWBORN CARE VALIDATION
         if (service === "newborn care") {
-        if (!baby_height || !baby_height.value) {
-            throw new CustomError(
-            400,
-            "Baby height is required for newborn care"
-            );
+        if (!baby_full_name)
+            throw new CustomError(400, "Baby full name is required");
+
+        if (!date_of_birth)
+            throw new CustomError(400, "Date of birth is required");
+
+        if (!baby_gender)
+            throw new CustomError(400, "Baby gender is required");
+
+        // Optional but validate structure if provided
+        if (baby_weight && !baby_weight.value) {
+            throw new CustomError(400, "Baby weight value is required");
+        }
+
+        if (baby_length && !baby_length.value) {
+            throw new CustomError(400, "Baby length value is required");
+        }
+
+        if (baby_head_circumference && !baby_head_circumference.value) {
+            throw new CustomError(400, "Head circumference value is required");
         }
         }
 
-        /* -------------------- CREATE PROFILE -------------------- */
+        // CREATE PROFILE
         const patient = await Patient.create({
-        user: userId,
-        service,
-        mode_of_pregnancy,
-        last_menstrual_period,
-        has_health_condition,
-        health_condition_details: has_health_condition
-            ? health_condition_details
-            : null,
-        baby_height,
-        blood_pressure,
-        sugar_level,
-        rhesus_factor,
-        fibroid_or_ovarian_cyst,
-        profile_photo,
+            user: userId,
+            service,
+
+            // pregnancy
+            mode_of_pregnancy,
+            last_menstrual_period,
+            expected_delivery_date,
+            gestational_weeks,
+            has_health_condition,
+            medical_conditions: has_health_condition ? medical_conditions : [],
+            on_medication,
+            medication_details: on_medication ? medication_details : null,
+            mode_of_delivery,
+
+            // newborn
+            baby_full_name,
+            date_of_birth,
+            baby_gender,
+            baby_weight,
+            baby_length,
+            baby_head_circumference,
+            baby_photo,
+
+            // common
+            profile_photo,
         });
 
         res.status(201).json({
-        success: true,
-        message: "Patient profile created successfully",
-        data: patient,
+            success: true,
+            message: "Patient profile created successfully",
+            data: patient,
         });
     } catch (error) {
         next(error);
     }
 };
-/**
- * Get Patient Profile
- */
+
+// update pregnancy dates
+export const updatePregnancyDates = async (req, res, next) => {
+    try {
+        const userId = req.user._id;
+
+        const { last_menstrual_period, expected_delivery_date } = req.body;
+
+        //FIND PROFILE 
+        const patient = await Patient.findOne({ user: userId });
+
+        if (!patient) {
+            throw new CustomError(404, "Patient profile not found");
+        }
+
+        if (patient.service !== "pregnancy care") {
+            throw new CustomError(
+                400,
+                "Only pregnancy care patients can update these fields"
+            );
+        }
+
+        // UPDATE LMP
+        if (last_menstrual_period) {
+            patient.last_menstrual_period = last_menstrual_period;
+
+            const lmp = new Date(last_menstrual_period);
+
+            // AUTO CALCULATE EDD
+            const edd = new Date(lmp);
+            edd.setDate(edd.getDate() + 280);
+
+            patient.expected_delivery_date = edd;
+        }
+
+        //OPTIONAL MANUAL EDD
+        if (expected_delivery_date && !last_menstrual_period) {
+            patient.expected_delivery_date = expected_delivery_date;
+        }
+
+        // RECALCULATE GESTATIONAL WEEKS
+        if (patient.last_menstrual_period) {
+            const today = new Date();
+            const lmp = new Date(patient.last_menstrual_period);
+
+            const diffTime = today - lmp;
+            const diffDays = diffTime / (1000 * 60 * 60 * 24);
+
+            patient.gestational_weeks = Math.floor(diffDays / 7);
+        }
+
+        await patient.save();
+
+        res.status(200).json({
+            success: true,
+            message: "Pregnancy dates updated successfully",
+            data: patient,
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+//Get Patient Profile
 export const getPatientProfile = async (req, res, next) => {
     try {
         const patient = await Patient.findOne({ user: req.user._id, });
@@ -114,9 +225,7 @@ export const getPatientProfile = async (req, res, next) => {
     }
 };
 
-/**
- * Delete Patient Profile (Optional)
- */
+//Delete Patient Profile (Optional)
 export const deletePatientProfile = async (req, res, next) => {
     try {
         const patient = await Patient.findOneAndDelete({
@@ -137,15 +246,63 @@ export const deletePatientProfile = async (req, res, next) => {
 // patient create how're you feeling post
 export const createFeelingEntry = async (req, res, next) => {
     try {
-        const { content, media } = req.body;
+        const { content, media, visible_to, visibility_type } = req.body;
         const userId = req.user._id;
 
-        if (!content) throw new CustomError(400, "Content is required for feeling entry");
+        if (!content) {
+            throw new CustomError(400, "Content is required for feeling entry");
+        }
 
+        //Get patient subscription to determine which providers they can share with
+        const subscriptions = await Subscription.find({
+            patient: userId,
+            status: "active",
+        }).select("provider");
+
+        const subscribedProviderIds = subscriptions.map(sub => sub.provider.toString());
+
+        let finalVisibleTo = [];
+
+        //HANDLE VISIBILITY
+
+        // 1. PRIVATE (no provider sees it)
+        if (visibility_type === "private") {
+            finalVisibleTo = [];
+        }
+
+        // 2. ALL SUBSCRIBED PROVIDERS
+        else if (visibility_type === "all_providers") {
+            finalVisibleTo = subscribedProviderIds;
+        }
+
+        // 3. SELECTED PROVIDERS
+        else if (visibility_type === "selected_providers") {
+            if (!visible_to || visible_to.length === 0) {
+                throw new CustomError(400, "Please select at least one provider");
+            }
+
+            // 🔥 SECURITY: ensure selected providers are actually subscribed
+            const invalidProviders = visible_to.filter(
+                (id) => !subscribedProviderIds.includes(id)
+            );
+
+            if (invalidProviders.length > 0) {
+                throw new CustomError(
+                    403,
+                    "You can only select providers you are subscribed to"
+                );
+            }
+
+            finalVisibleTo = visible_to;
+        }
+
+        //CREATE POST
         const feelingsPost = await FeelingsPost.create({
             user: userId,
             content,
             media,
+            visible_to: finalVisibleTo,
+            visibility_type,
         });
 
         res.status(201).json({
@@ -154,7 +311,7 @@ export const createFeelingEntry = async (req, res, next) => {
             data: feelingsPost,
         });
     } catch (error) {
-        
+        next(error);
     }
 };
 
@@ -293,31 +450,137 @@ export const getMaternalHealth = async (req, res, next) => {
     }   
 };
 
-// Get all active providers (optional filter by service)
-export const getProviders = async (req, res, next) => {
+//subscribe to provider
+export const subscribeToProvider = async (req, res, next) => {
     try {
-        const { service } = req.query;
+        const patientId = req.user._id;
+        const { providerId } = req.body;
 
-        const filter = {
-            status: "active",
-        };
-
-        if (service) {
-            filter.specialties = service;
+        if (!providerId) {
+            throw new CustomError(400, "Provider ID is required");
         }
 
-        const providers = await Provider.find(filter)
-        .populate("user", "full_name email phone");
+        // prevent self-subscription
+        if (patientId.toString() === providerId) {
+            throw new CustomError(400, "You cannot subscribe to yourself");
+        }
 
-        res.status(200).json({
+        //CHECK EXISTING 
+        const existing = await Subscription.findOne({
+            patient: patientId,
+            provider: providerId,
+        });
+
+        if (existing) {
+            if (existing.status === "active") {
+                throw new CustomError(400, "Already subscribed to this provider");
+            }
+
+            // Reactivate subscription
+            existing.status = "active";
+            existing.start_date = new Date();
+            await existing.save();
+
+            return res.status(200).json({
+                success: true,
+                message: "Subscription reactivated",
+                data: existing,
+            });
+        }
+
+        //CREATE NEW 
+        const subscription = await Subscription.create({
+            patient: patientId,
+            provider: providerId,
+        });
+
+        res.status(201).json({
             success: true,
-            message: "Providers retrieved successfully",
-            count: providers.length,
-            data: providers,
+            message: "Subscribed to provider successfully",
+            data: subscription,
         });
     } catch (error) {
         next(error);
     }
+};
+
+//unsubscribe from provider
+export const unsubscribeProvider = async (req, res, next) => {
+    try {
+        const patientId = req.user._id;
+        const { providerId } = req.params;
+
+        const subscription = await Subscription.findOne({
+            patient: patientId,
+            provider: providerId,
+        });
+
+        if (!subscription) {
+            throw new CustomError(404, "Subscription not found");
+        }
+
+        subscription.status = "cancelled";
+        await subscription.save();
+
+        res.status(200).json({
+            success: true,
+            message: "Unsubscribed successfully",
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+// Get all active providers (optional filter by service)
+export const getProviders = async (req, res, next) => {
+  try {
+    const { service } = req.query;
+    const userId = req.user?._id; // optional (if logged in)
+
+    const filter = { status: "active" };
+
+    if (service) {
+      filter.specialties = service;
+    }
+
+    //GET PROVIDERS 
+    const providers = await Provider.find(filter).populate("user", "full_name email phone");
+
+    //GET USER SUBSCRIPTIONS
+    let subscribedProviderIds = [];
+
+    if (userId) {
+        const subscriptions = await Subscription.find({
+            patient: userId,
+            status: "active",
+        }).select("provider");
+
+        subscribedProviderIds = subscriptions.map(sub =>
+            sub.provider.toString()
+        );
+    }
+
+    /* -------------------- ATTACH SUBSCRIPTION STATUS -------------------- */
+    const result = providers.map(provider => {
+        const isSubscribed = subscribedProviderIds.includes(
+            provider._id.toString()
+        );
+
+        return {
+            ...provider.toObject(),
+            isSubscribed,
+        };
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Providers retrieved successfully",
+      count: result.length,
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
 };
 
 // get provider profile by id

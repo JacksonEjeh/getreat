@@ -29,7 +29,7 @@ export const getAllProviders = async (req, res, next) => {
             ];
         }
 
-        const providers = await ProviderProfile.find(query)
+        const providers = await Provider.find(query)
         .populate("user")
         .sort({ createdAt: -1 })
         .skip((pageNumber - 1) * limitNumber)
@@ -60,11 +60,11 @@ export const getSingleProviderProfile = async (req, res, next) => {
     try {
         const { providerId } = req.params;
 
-        const provider = await ProviderProfile.findById(providerId)
+        const provider = await Provider.findById(providerId)
         .populate("user").lean();
 
         if (!provider) {
-        throw new CustomError(404, "Provider not found", "NotFoundError");
+            throw new CustomError(404, "Provider not found", "NotFoundError");
         }
 
         res.status(200).json({

@@ -9,6 +9,7 @@ const maternalHealthSchema = new mongoose.Schema({
     },
     date: {
         type: Date,
+        default: Date.now,
         required: true,
     },
     has_existing_conditions: {
