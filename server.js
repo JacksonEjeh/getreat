@@ -33,6 +33,8 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
+app.options("*", cors());
+
 //Middleware
 app.use(helmet());
 app.use(express.json());
