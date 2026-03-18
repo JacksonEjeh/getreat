@@ -1,16 +1,9 @@
 import nodemailer from "nodemailer";
 import { config } from "../configs/config.js";
+import sgMail from "@sendgrid/mail";
 
-const transporter = nodemailer.createTransport({
-    host: "smtp.gmail.com",
-    port: 465,
-    secure: true,
-    auth: {
-        user: config.email,
-        pass: config.email_password,
-    },
-    family: 4, // <-- FORCE IPv4 for Render
-});
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+
 
 const sendEmail = async (email, subject, message) => {
     try {
@@ -20,7 +13,7 @@ const sendEmail = async (email, subject, message) => {
             subject,
             html: `<p style="font-size: 16px; color: #333;">${message}</p>`,
         };
-        const info = await transporter.sendMail(mailOptions);
+        const info = await sgMail.send(mailOptions);
 
         return {
             success: true,

@@ -215,7 +215,7 @@ const signUp = async (req, res, next) => {
 
         res.status(201).json({
             success: true,
-            message: "OTP sent to email. Please verify your account.",
+            message: "OTP sent to email. Please verify your account. check your spam folder if you don't see the email in your inbox.",
             data: { 
                 email,
                 nextStep: "verify-email",
