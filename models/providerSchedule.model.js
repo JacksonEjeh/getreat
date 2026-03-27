@@ -2,6 +2,10 @@ import mongoose from "mongoose";
 
 const slotSchema = new mongoose.Schema(
   {
+    _id: {
+      type: mongoose.Schema.Types.ObjectId,
+      auto: true
+    },
     startTime: {
       type: String, // "09:00 AM"
       required: true,
@@ -22,16 +26,17 @@ const slotSchema = new mongoose.Schema(
   { _id: false }
 );
 
+
 const providerScheduleSchema = new mongoose.Schema(
   {
     provider: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "ProviderProfile",
+      ref: "User",
       required: true,
     },
 
     date: {
-      type: Date,
+      type: String, // "2024-06-01"
       required: true,
     },
 

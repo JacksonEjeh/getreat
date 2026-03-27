@@ -4,7 +4,7 @@ const appointmentSchema = new mongoose.Schema(
   {
     provider: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "ProviderProfile",
+      ref: "User",
       required: true,
     },
 
@@ -15,7 +15,7 @@ const appointmentSchema = new mongoose.Schema(
     },
 
     appointmentDate: {
-      type: Date,
+      type: String, // e.g. "2024-06-01"
       required: true,
     },
 

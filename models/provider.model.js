@@ -34,7 +34,6 @@ const ProviderProfile = new mongoose.Schema(
         },
         professional_field:{
             type: String,
-            enum: ["doctor", "therapist", "nutritionist", "fitness trainer", "other"],
             required: true,
         },
         years_of_experience: {
@@ -82,7 +81,7 @@ const ProviderProfile = new mongoose.Schema(
             type: String,
             default: null,
         },
-
+        // pending stuffs below
         appointments: [
             {
                 type: mongoose.Schema.Types.ObjectId,

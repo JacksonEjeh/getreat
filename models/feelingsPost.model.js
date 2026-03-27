@@ -36,23 +36,6 @@ const feelingsPostSchema = new mongoose.Schema({
       enum: ["private", "selected_providers", "all_providers"],
       default: "private",
     },
-    comments: [
-        {
-            user: { 
-                type: mongoose.Schema.Types.ObjectId,
-                ref: "User",
-                required: true,
-            },
-            comment: {
-                type: String,
-                required: true,
-            },
-            createdAt: {
-                type: Date,
-                default: Date.now,
-            },
-        },
-    ],
     
 }, { timestamps: true });
 

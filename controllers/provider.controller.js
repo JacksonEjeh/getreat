@@ -4,6 +4,23 @@ import Appointment from "../models/appointment.model.js";
 import Provider from "../models/provider.model.js";
 import ProviderSchedule from "../models/providerSchedule.model.js";
 
+const convertTo24Hour = (time12h) => {
+    const [time, modifier] = time12h.split(" ");
+    let [hours, minutes] = time.split(":");
+
+    hours = parseInt(hours, 10);
+
+    if (modifier === "PM" && hours !== 12) {
+        hours += 12;
+    }
+
+    if (modifier === "AM" && hours === 12) {
+        hours = 0;
+    }
+
+    return `${String(hours).padStart(2, "0")}:${minutes}`;
+};
+
 // create provider profile
 
 export const createProviderProfile = async (req, res, next) => {
@@ -115,52 +132,120 @@ export const updateAppointmentStatus = async (req, res, next) => {
 };
 
 //create provider availability schedule (for future use)
-
 export const createSchedule = async (req, res, next) => {
     try {
         const providerId = req.user._id;
         const { date, timeZone, startTime, endTime, slotDuration = 60 } = req.body;
 
-        const start = new Date(`1970-01-01T${startTime}`);
-        const end = new Date(`1970-01-01T${endTime}`);
-
-        if (start >= end) {
-            throw new CustomError(400, "Invalid time range", "ValidationError");
+        if (!date || !startTime || !endTime || !timeZone) {
+            throw new CustomError(400, "All fields are required");
         }
 
-        // Generate slots
-        const slots = [];
-        let current = start;
+        const normalizedDate = date;
 
-        while (current < end) {
+        const start24 = convertTo24Hour(startTime);
+        const end24 = convertTo24Hour(endTime);
+
+        const start = new Date(`1970-01-01T${start24}:00`);
+        const end = new Date(`1970-01-01T${end24}:00`);
+
+        if (start >= end) {
+            throw new CustomError(400, "Invalid time range");
+        }
+
+        const newSlots = [];
+        let current = new Date(start);
+
+        while (true) {
             const next = new Date(current.getTime() + slotDuration * 60000);
+            if (next > end) break;
 
-            slots.push({
+            newSlots.push({
                 startTime: current.toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
+                    hour: "2-digit",
+                    minute: "2-digit",
                 }),
                 endTime: next.toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
+                    hour: "2-digit",
+                    minute: "2-digit",
                 }),
             });
 
             current = next;
         }
 
-        const schedule = await ProviderSchedule.findOneAndUpdate(
-            { provider: providerId, date },
-            { provider: providerId, date, timeZone, slots },
-            { upsert: true, new: true }
-        );
+        if (newSlots.length === 0) {
+            throw new CustomError(400, "No valid slots generated");
+        }
+
+        let schedule = await ProviderSchedule.findOne({
+            provider: providerId,
+            date: normalizedDate,
+        });
+
+        const timeToMinutes = (timeStr) => {
+            const [time, modifier] = timeStr.split(" ");
+            let [hours, minutes] = time.split(":").map(Number);
+
+            if (modifier === "PM" && hours !== 12) hours += 12;
+            if (modifier === "AM" && hours === 12) hours = 0;
+
+            return hours * 60 + minutes;
+        };
+
+        if (!schedule) {
+            schedule = await ProviderSchedule.create({
+                provider: providerId,
+                date: normalizedDate,
+                timeZone,
+                slots: newSlots,
+            });
+        } else {
+            const isOverlapping = schedule.slots.some(existing => {
+                const existingStart = timeToMinutes(existing.startTime);
+                const existingEnd = timeToMinutes(existing.endTime);
+
+                return newSlots.some(newSlot => {
+                const newStart = timeToMinutes(newSlot.startTime);
+                const newEnd = timeToMinutes(newSlot.endTime);
+
+                return newStart < existingEnd && newEnd > existingStart;
+                });
+            });
+
+            if (isOverlapping) {
+                throw new CustomError(400, "Time slot overlaps with existing slots");
+            }
+
+            const existingTimes = new Set(
+                schedule.slots.map((s) => s.startTime)
+            );
+
+            const filteredSlots = newSlots.filter(
+                (slot) => !existingTimes.has(slot.startTime)
+            );
+
+            if (filteredSlots.length === 0) {
+                throw new CustomError(400, "All slots already exist");
+            }
+
+            schedule.slots.push(...filteredSlots);
+            schedule.timeZone = timeZone;
+
+            schedule.slots.sort(
+                (a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime)
+            );
+
+            await schedule.save();
+        }
 
         res.status(201).json({
             success: true,
-            message: "Schedule created successfully",
+            message: "Schedule updated successfully",
             data: schedule,
         });
     } catch (error) {
         next(error);
     }
 };
+

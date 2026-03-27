@@ -3,9 +3,7 @@ import Provider from "../models/provider.model.js";
 import ProviderSchedule from "../models/providerSchedule.model.js";
 import CustomError from "../middleware/errorHandler.js";
 import Patient from "../models/patient.model.js";
-import FeelingsPost from "../models/feelingsPost.model.js";
 import NutritionProfile from "../models/nutrition.model.js";
-import MaternalHealthProfile from "../models/maternalHealth.model.js";
 import Subscription from "../models/providerSubscription.model.js";
 
 // Create or Update Patient Profile
@@ -243,94 +241,6 @@ export const deletePatientProfile = async (req, res, next) => {
     }
 };
 
-// patient create how're you feeling post
-export const createFeelingEntry = async (req, res, next) => {
-    try {
-        const { content, media, visible_to, visibility_type } = req.body;
-        const userId = req.user._id;
-
-        if (!content) {
-            throw new CustomError(400, "Content is required for feeling entry");
-        }
-
-        //Get patient subscription to determine which providers they can share with
-        const subscriptions = await Subscription.find({
-            patient: userId,
-            status: "active",
-        }).select("provider");
-
-        const subscribedProviderIds = subscriptions.map(sub => sub.provider.toString());
-
-        let finalVisibleTo = [];
-
-        //HANDLE VISIBILITY
-
-        // 1. PRIVATE (no provider sees it)
-        if (visibility_type === "private") {
-            finalVisibleTo = [];
-        }
-
-        // 2. ALL SUBSCRIBED PROVIDERS
-        else if (visibility_type === "all_providers") {
-            finalVisibleTo = subscribedProviderIds;
-        }
-
-        // 3. SELECTED PROVIDERS
-        else if (visibility_type === "selected_providers") {
-            if (!visible_to || visible_to.length === 0) {
-                throw new CustomError(400, "Please select at least one provider");
-            }
-
-            // 🔥 SECURITY: ensure selected providers are actually subscribed
-            const invalidProviders = visible_to.filter(
-                (id) => !subscribedProviderIds.includes(id)
-            );
-
-            if (invalidProviders.length > 0) {
-                throw new CustomError(
-                    403,
-                    "You can only select providers you are subscribed to"
-                );
-            }
-
-            finalVisibleTo = visible_to;
-        }
-
-        //CREATE POST
-        const feelingsPost = await FeelingsPost.create({
-            user: userId,
-            content,
-            media,
-            visible_to: finalVisibleTo,
-            visibility_type,
-        });
-
-        res.status(201).json({
-            success: true,
-            message: "Feeling post entry created successfully",
-            data: feelingsPost,
-        });
-    } catch (error) {
-        next(error);
-    }
-};
-
-// patient get how're you feeling posts
-export const getFeelingEntries = async (req, res, next) => {
-    try {
-        const userId = req.user._id;
-        const feelingsPosts = await FeelingsPost.find({ user: userId }).sort({ createdAt: -1 });
-
-        res.status(200).json({
-            success: true,
-            message: "Feeling Post retrieved successfully",
-            data: feelingsPosts,
-        });
-    } catch (error) {
-        next(error);
-    }
-};
-
 // create nutrition entry
 export const createNutritionEntry = async (req, res, next) => {
     try {
@@ -402,52 +312,74 @@ export const updateNutritionEntry = async (req, res, next) => {
     }
 };
 
-// create maternal health
-export const createMaternalHealth = async (req, res, next) => {
+// Get all active providers (optional filter by service)
+export const getProviders = async (req, res, next) => {
     try {
-        const { date, has_existing_conditions, existing_conditions_details, has_medications, medications_details } = req.body;
-        const userId = req.user._id;
-        if (!date) throw new CustomError(400, "Date is required");
-        if (has_existing_conditions === undefined) throw new CustomError(400, "Existing conditions status is required");
-        if (has_existing_conditions === true && !existing_conditions_details) throw new CustomError(400, "Please provide existing conditions details");
-        if (has_medications === undefined) throw new CustomError(400, "Medication status is required");
-        if (has_medications === true && !medications_details) throw new CustomError(400, "Please provide medications details");
+        const { service } = req.query;
+        const userId = req.user?._id; // optional (if logged in)
 
-        const maternalHealthProfile = await MaternalHealthProfile.create({
-            user: userId,
-            date,
-            has_existing_conditions,
-            existing_conditions_details: has_existing_conditions ? existing_conditions_details : null,
-            has_medications,
-            medications_details: has_medications ? medications_details : null,
+        const filter = { status: "active" };
+
+        if (service) {
+        filter.specialties = service;
+        }
+
+        //GET PROVIDERS 
+        const providers = await Provider.find(filter).populate("user");
+
+        //GET USER SUBSCRIPTIONS
+        let subscribedProviderIds = [];
+
+        if (userId) {
+            const subscriptions = await Subscription.find({
+                patient: userId,
+                status: "active",
+            }).select("provider");
+
+            subscribedProviderIds = subscriptions.map(sub =>
+                sub.provider.toString()
+            );
+        }
+
+        /* -------------------- ATTACH SUBSCRIPTION STATUS -------------------- */
+        const result = providers.map(provider => {
+            const isSubscribed = subscribedProviderIds.includes(
+                provider._id.toString()
+            );
+
+            return {
+                ...provider.toObject(),
+                isSubscribed,
+            };
         });
 
-        res.status(201).json({
-            success: true,
-            message: "Maternal health profile created successfully",
-            data: maternalHealthProfile,
+        res.status(200).json({
+        success: true,
+        message: "Providers retrieved successfully",
+        count: result.length,
+        data: result,
         });
-
     } catch (error) {
         next(error);
     }
 };
 
-// get maternal health
-export const getMaternalHealth = async (req, res, next) => {
+// get provider profile by id
+export const getProviderProfileById = async (req, res, next) => {
     try {
-        const userId = req.user._id;
-        const maternalHealthProfile = await MaternalHealthProfile.findOne({ user: userId });
-        if (!maternalHealthProfile) throw new CustomError(404, "Maternal health profile not found");
+        const { providerId } = req.params;
+        const provider = await Provider.findById(providerId).populate("user");
+        if (!provider || provider.status !== "active") throw new CustomError(404, "Provider not found" );
 
         res.status(200).json({
             success: true,
-            data: maternalHealthProfile,
-            message: "Maternal health profile retrieved successfully",
+            data: provider,
+            message: "Provider profile retrieved successfully",
         });
+
     } catch (error) {
         next(error);
-    }   
+    }
 };
 
 //subscribe to provider
@@ -526,76 +458,6 @@ export const unsubscribeProvider = async (req, res, next) => {
             success: true,
             message: "Unsubscribed successfully",
         });
-    } catch (error) {
-        next(error);
-    }
-};
-
-// Get all active providers (optional filter by service)
-export const getProviders = async (req, res, next) => {
-  try {
-    const { service } = req.query;
-    const userId = req.user?._id; // optional (if logged in)
-
-    const filter = { status: "active" };
-
-    if (service) {
-      filter.specialties = service;
-    }
-
-    //GET PROVIDERS 
-    const providers = await Provider.find(filter).populate("user", "full_name email phone");
-
-    //GET USER SUBSCRIPTIONS
-    let subscribedProviderIds = [];
-
-    if (userId) {
-        const subscriptions = await Subscription.find({
-            patient: userId,
-            status: "active",
-        }).select("provider");
-
-        subscribedProviderIds = subscriptions.map(sub =>
-            sub.provider.toString()
-        );
-    }
-
-    /* -------------------- ATTACH SUBSCRIPTION STATUS -------------------- */
-    const result = providers.map(provider => {
-        const isSubscribed = subscribedProviderIds.includes(
-            provider._id.toString()
-        );
-
-        return {
-            ...provider.toObject(),
-            isSubscribed,
-        };
-    });
-
-    res.status(200).json({
-      success: true,
-      message: "Providers retrieved successfully",
-      count: result.length,
-      data: result,
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-// get provider profile by id
-export const getProviderProfileById = async (req, res, next) => {
-    try {
-        const { providerId } = req.params;
-        const provider = await Provider.findById(providerId).populate("user", "full_name email phone");
-        if (!provider || provider.status !== "active") throw new CustomError(404, "Provider not found" );
-
-        res.status(200).json({
-            success: true,
-            data: provider,
-            message: "Provider profile retrieved successfully",
-        });
-
     } catch (error) {
         next(error);
     }

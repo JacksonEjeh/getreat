@@ -88,7 +88,7 @@ const patientSchema = new mongoose.Schema(
       type: String,
       enum: ["vaginal", "cesarean"],
       required: function () {
-        return this.service === "pregnancy care";
+        return this.service === "newborn care";
       },
     },
 
