@@ -41,7 +41,7 @@ app.use(cookieParser());
 
 //Routes
 app.use("/api/v1/auth", authRoutes);
-app.use("/api/v1/providers", providerRoutes);
+app.use("/api/v1/provider", providerRoutes);
 app.use("/api/v1/patient", patientRoutes);
 
 //Global Error Handler (only one)

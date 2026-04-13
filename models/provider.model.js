@@ -128,3 +128,4 @@ const ProviderProfile = new mongoose.Schema(
 
 const Provider = mongoose.model("ProviderProfile", ProviderProfile);
 export default Provider;
+

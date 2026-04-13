@@ -2,6 +2,7 @@ import CustomError from "./errorHandler.js";
 
 export const validateProviderInput = (body) => {
     const {
+        professional_field,
         years_of_experience,
         bio,
         country,
