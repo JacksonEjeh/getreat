@@ -321,7 +321,7 @@ export const getProviders = async (req, res, next) => {
         const filter = { status: "active" };
 
         if (service) {
-        filter.specialties = service;
+            filter.specialties = service;
         }
 
         //GET PROVIDERS 
@@ -354,10 +354,10 @@ export const getProviders = async (req, res, next) => {
         });
 
         res.status(200).json({
-        success: true,
-        message: "Providers retrieved successfully",
-        count: result.length,
-        data: result,
+            success: true,
+            message: "Providers retrieved successfully",
+            count: result.length,
+            data: result,
         });
     } catch (error) {
         next(error);
@@ -377,87 +377,6 @@ export const getProviderProfileById = async (req, res, next) => {
             message: "Provider profile retrieved successfully",
         });
 
-    } catch (error) {
-        next(error);
-    }
-};
-
-//subscribe to provider
-export const subscribeToProvider = async (req, res, next) => {
-    try {
-        const patientId = req.user._id;
-        const { providerId } = req.body;
-
-        if (!providerId) {
-            throw new CustomError(400, "Provider ID is required");
-        }
-
-        // prevent self-subscription
-        if (patientId.toString() === providerId) {
-            throw new CustomError(400, "You cannot subscribe to yourself");
-        }
-
-        //CHECK EXISTING 
-        const existing = await Subscription.findOne({
-            patient: patientId,
-            provider: providerId,
-        });
-
-        if (existing) {
-            if (existing.status === "active") {
-                throw new CustomError(400, "Already subscribed to this provider");
-            }
-
-            // Reactivate subscription
-            existing.status = "active";
-            existing.start_date = new Date();
-            await existing.save();
-
-            return res.status(200).json({
-                success: true,
-                message: "Subscription reactivated",
-                data: existing,
-            });
-        }
-
-        //CREATE NEW 
-        const subscription = await Subscription.create({
-            patient: patientId,
-            provider: providerId,
-        });
-
-        res.status(201).json({
-            success: true,
-            message: "Subscribed to provider successfully",
-            data: subscription,
-        });
-    } catch (error) {
-        next(error);
-    }
-};
-
-//unsubscribe from provider
-export const unsubscribeProvider = async (req, res, next) => {
-    try {
-        const patientId = req.user._id;
-        const { providerId } = req.params;
-
-        const subscription = await Subscription.findOne({
-            patient: patientId,
-            provider: providerId,
-        });
-
-        if (!subscription) {
-            throw new CustomError(404, "Subscription not found");
-        }
-
-        subscription.status = "cancelled";
-        await subscription.save();
-
-        res.status(200).json({
-            success: true,
-            message: "Unsubscribed successfully",
-        });
     } catch (error) {
         next(error);
     }

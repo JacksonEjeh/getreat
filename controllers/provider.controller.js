@@ -22,7 +22,6 @@ const convertTo24Hour = (time12h) => {
 };
 
 // create provider profile
-
 export const createProviderProfile = async (req, res, next) => {
     try {
         validateProviderInput(req.body);
