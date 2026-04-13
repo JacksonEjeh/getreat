@@ -31,9 +31,9 @@ export const createPatientProfile = async (req, res, next) => {
             medical_conditions,
             on_medication,
             medication_details,
-            mode_of_delivery,
             
             // newborn
+            mode_of_delivery,
             baby_full_name,
             date_of_birth,
             baby_gender,
@@ -51,59 +51,60 @@ export const createPatientProfile = async (req, res, next) => {
 
         // PREGNANCY CARE VALIDATION 
         if (service === "pregnancy care") {
-        if (!mode_of_pregnancy)
-            throw new CustomError(400, "Mode of pregnancy is required");
+            if (!mode_of_pregnancy)
+                throw new CustomError(400, "Mode of pregnancy is required");
 
-        if (!last_menstrual_period)
-            throw new CustomError(400, "Last menstrual period is required");
+            if (!last_menstrual_period)
+                throw new CustomError(400, "Last menstrual period is required");
 
-        if (!expected_delivery_date)
-            throw new CustomError(400, "Expected delivery date is required");
+            if (!expected_delivery_date)
+                throw new CustomError(400, "Expected delivery date is required");
 
-        if (!gestational_weeks)
-            throw new CustomError(400, "Gestational weeks is required");
+            if (!gestational_weeks)
+                throw new CustomError(400, "Gestational weeks is required");
 
-        if (has_health_condition === undefined)
-            throw new CustomError(400, "Health condition status is required");
+            if (has_health_condition === undefined)
+                throw new CustomError(400, "Health condition status is required");
 
-        if (has_health_condition && (!medical_conditions || medical_conditions.length === 0)) {
-            throw new CustomError(400, "Medical conditions are required");
+            if (has_health_condition && (!medical_conditions || medical_conditions.length === 0)) {
+                throw new CustomError(400, "Medical conditions are required");
+            }
+
+            if (on_medication === undefined)
+                throw new CustomError(400, "Medication status is required");
+
+            if (on_medication && !medication_details) {
+                throw new CustomError(400, "Medication details are required");
+            }
+
         }
-
-        if (on_medication === undefined)
-            throw new CustomError(400, "Medication status is required");
-
-        if (on_medication && !medication_details) {
-            throw new CustomError(400, "Medication details are required");
-        }
-
-        if (!mode_of_delivery)
-            throw new CustomError(400, "Mode of delivery is required");
-        }
-
+        
         // NEWBORN CARE VALIDATION
         if (service === "newborn care") {
-        if (!baby_full_name)
-            throw new CustomError(400, "Baby full name is required");
+            if (!mode_of_delivery)
+                throw new CustomError(400, "Mode of delivery is required");
 
-        if (!date_of_birth)
-            throw new CustomError(400, "Date of birth is required");
+            if (!baby_full_name)
+                throw new CustomError(400, "Baby full name is required");
 
-        if (!baby_gender)
-            throw new CustomError(400, "Baby gender is required");
+            if (!date_of_birth)
+                throw new CustomError(400, "Date of birth is required");
 
-        // Optional but validate structure if provided
-        if (baby_weight && !baby_weight.value) {
-            throw new CustomError(400, "Baby weight value is required");
-        }
+            if (!baby_gender)
+                throw new CustomError(400, "Baby gender is required");
 
-        if (baby_length && !baby_length.value) {
-            throw new CustomError(400, "Baby length value is required");
-        }
+            // Optional but validate structure if provided
+            if (baby_weight && !baby_weight.value) {
+                throw new CustomError(400, "Baby weight value is required");
+            }
 
-        if (baby_head_circumference && !baby_head_circumference.value) {
-            throw new CustomError(400, "Head circumference value is required");
-        }
+            if (baby_length && !baby_length.value) {
+                throw new CustomError(400, "Baby length value is required");
+            }
+
+            if (baby_head_circumference && !baby_head_circumference.value) {
+                throw new CustomError(400, "Head circumference value is required");
+            }
         }
 
         // CREATE PROFILE
