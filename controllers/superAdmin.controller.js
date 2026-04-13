@@ -1,5 +1,5 @@
-import CustomError from "../middleware/errorHandler";
-import Provider from "../models/provider.model";
+import CustomError from "../middleware/errorHandler.js";
+import Provider from "../models/provider.model.js";
 
 // get all providers (for super admin)
 export const getAllProviders = async (req, res, next) => {

@@ -7,6 +7,7 @@ import cors from "cors";
 import authRoutes from './routes/auth.routes.js';
 import providerRoutes from './routes/provider.routes.js';
 import patientRoutes from './routes/patient.routes.js';
+import superAdminRoutes from './routes/superAdmin.routes.js';
 import { swaggerDocs } from './configs/swagger.js';
 
 const app = express();
@@ -43,6 +44,7 @@ app.use(cookieParser());
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/provider", providerRoutes);
 app.use("/api/v1/patient", patientRoutes);
+app.use("/api/v1/super-admin", superAdminRoutes);
 
 //Global Error Handler (only one)
 app.use((err, req, res, next) => {

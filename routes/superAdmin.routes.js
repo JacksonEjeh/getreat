@@ -34,3 +34,5 @@ router.get(
 );
 
 router.get("/providers", authenticate, authorize("super admin"), getAllProviders);
+
+export default router;
