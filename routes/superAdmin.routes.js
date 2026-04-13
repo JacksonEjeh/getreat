@@ -8,31 +8,31 @@ const router = express.Router();
 router.patch(
   "/providers/:providerId/credentials/:credentialName",
   authenticate,
-  authorize("super admin"),
+  authorize("super-admin"),
   reviewCredential
 );
 
 router.patch(
   "/providers/:providerId/review",
   authenticate,
-  authorize("super admin"),
+  authorize("super-admin"),
   reviewProviderProfile
 );
 
 router.get(
   "/providers/application/:providerId",
   authenticate,
-  authorize("super admin"),
+  authorize("super-admin"),
   viewProviderApplication
 );
 
 router.get(
     "/providers/:providerId",
     authenticate,
-    authorize("super admin"),
+    authorize("super-admin"),
     getSingleProviderProfile
 );
 
-router.get("/providers", authenticate, authorize("super admin"), getAllProviders);
+router.get("/providers", authenticate, authorize("super-admin"), getAllProviders);
 
 export default router;
